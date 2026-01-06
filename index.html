@@ -509,27 +509,8 @@
     }
 
     /* ================= VIDEO LOGIC ================= */
-    const FALLBACK_VIDEO_DATA = `
-Slide 2: 
-Winning the Zero Moment of Truth - Changing the Rulebook_vi
-https://drive.google.com/file/d/1_JRpzGeHDgZy1UaCZcXjkIq33YMAq2bD/view?usp=sharing
-Duration: 2:05
-
-Slide 8:
-Omni-Channel vs. Multi-Channel
-https://drive.google.com/file/d/1bySV7fYfvzriFyh1jK0zbRqbzro9YBjC/view?usp=drive_link
-Duration: 1:49
-
-Slide 16:
-Push Strategy vs Pull Strategy
-https://drive.google.com/file/d/1B_lzX69T0MR-wU4PZ2idNWi1gmK0P4GJ/view?usp=drive_link
-Duration: 3:00
-
-Slide 19:
-Learn how the Just Walk Out technology experience works
-https://drive.google.com/file/d/1kF-aL0RIeFNyURWk7QkCaTOTwvnRcLDX/view?usp=drive_link
-Duration: 3:34
-    `;
+    // REMOVED HARDCODED FALLBACK to prevent errors when file is missing.
+    // Nếu không có videoLink.txt, web sẽ chạy slide bình thường thay vì hiện video ảo.
 
     function parseVideoData(text) {
       const lines = text.split('\n');
@@ -560,14 +541,12 @@ Duration: 3:34
           else if (line.match(/^Duration[:\s]+/i)) {
             const data = videoMap.get(currentSlide);
             if (data) {
-              // Try "1:58"
               const timeMatch = line.match(/Duration[:\s]+(\d+):(\d+)/i);
               if (timeMatch) {
                 const m = parseInt(timeMatch[1]);
                 const s = parseInt(timeMatch[2]);
                 data.duration = m * 60 + s;
               } else {
-                // Try "118"
                 const secMatch = line.match(/Duration[:\s]+(\d+)/i);
                 if (secMatch) {
                   data.duration = parseInt(secMatch[1]);
@@ -576,7 +555,6 @@ Duration: 3:34
             }
           }
           else {
-            // Treat other lines as potential title if not yet set
             const data = videoMap.get(currentSlide);
             if (data && !data.title && !line.startsWith('Duration')) {
               data.title = line;
@@ -590,12 +568,16 @@ Duration: 3:34
     async function loadVideoLinks() {
       try {
         const response = await fetch('videoLink.txt');
-        if (!response.ok) throw new Error("Cannot fetch videoLink.txt");
+        // Nếu lỗi 404 (file chưa upload), response.ok sẽ là false
+        if (!response.ok) {
+          console.warn(`videoLink.txt not found (${response.status}). Skipping video integration.`);
+          return;
+        }
         const text = await response.text();
         parseVideoData(text);
       } catch (e) {
-        console.warn("Fetch failed (likely CORS), using fallback data:", e);
-        parseVideoData(FALLBACK_VIDEO_DATA);
+        console.warn("Error loading videoLink.txt:", e);
+        // Không dùng fallback nữa để tránh làm phiền người dùng
       }
     }
 
@@ -605,7 +587,7 @@ Duration: 3:34
       let url = videoData.url;
       const duration = videoData.duration;
 
-      // FORCE HTTPS: Fix "Mixed Content" error on GitHub Pages
+      // FORCE HTTPS
       if (url.startsWith('http:')) {
         url = url.replace('http:', 'https:');
       }
